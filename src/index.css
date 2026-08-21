@@ -738,3 +738,24 @@ input.num {
   color: var(--danger);
   font-weight: 600;
 }
+
+/* ---------- editable price list ---------- */
+
+.prices td {
+  padding: 0.4rem 0.85rem;
+}
+.price-input {
+  width: 7rem;
+  margin-left: auto;
+}
+.qty-input {
+  width: 5.5rem;
+}
+.table tr.dirty td {
+  background: #fffaf0;
+}
+.pill.changed {
+  background: #fdeccd;
+  color: #7a5200;
+  margin-left: 0.3rem;
+}

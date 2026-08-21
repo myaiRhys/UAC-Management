@@ -22,7 +22,16 @@ const PRODUCTS = [
   created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
 }))
 
-const db = { clients: [], products: PRODUCTS, orders: [], order_lines: [], production_log: [] }
+// Kept so /__reset can put edited prices back without changing product ids.
+const SEED_PRODUCTS = PRODUCTS.map((p) => ({ ...p }))
+
+const db = {
+  clients: [],
+  products: PRODUCTS.map((p) => ({ ...p })),
+  orders: [],
+  order_lines: [],
+  production_log: [],
+}
 
 const PARENT = {
   orders: { clients: ['client_id', 'clients'] },
@@ -112,6 +121,7 @@ createServer((req, res) => {
     for (const table of ['clients', 'orders', 'order_lines', 'production_log']) {
       db[table] = []
     }
+    db.products = SEED_PRODUCTS.map((p) => ({ ...p }))
     return json(res, 200, { reset: true })
   }
 

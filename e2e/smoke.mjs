@@ -200,6 +200,55 @@ if (!callout.includes('Nozzle covers') || !callout.includes('Banking details')) 
 }
 step('gaps flagged on price list')
 
+// --- prices are editable, and a saved edit reaches the quote builder ---
+const priceRow = (name) => page.locator('tr', { hasText: name }).first()
+const blackRow = priceRow('Black')
+const priceField = blackRow.locator('input').nth(0)
+const bulkField = blackRow.locator('input').nth(1)
+
+// A bulk price above the normal price is a typo; saving must be refused.
+await priceField.fill('30')
+await bulkField.fill('45')
+const saveBtn = page.getByRole('button', { name: /^Save \d+ change/ })
+if (!(await saveBtn.isDisabled())) {
+  errors.push('save allowed with a bulk price above the normal price')
+}
+if (!(await page.locator('.error').first().innerText()).includes('higher than')) {
+  errors.push('no warning shown for a bulk price above the normal price')
+}
+
+await bulkField.fill('26')
+await saveBtn.click()
+await page.locator('.success').waitFor({ timeout: 15000 })
+step('price edited and saved')
+
+// It must survive a reload, not just live in component state.
+await page.reload()
+await page.locator('.callout').waitFor({ timeout: 15000 })
+const reloaded = await priceRow('Black').locator('input').nth(0).inputValue()
+if (Number(reloaded) !== 30) {
+  errors.push(`edited price did not persist: got ${reloaded}`)
+}
+
+// And the builder must quote at the new price.
+await page.goto(BASE + '/orders/new')
+await rows().nth(0).locator('select').selectOption({ label: 'Squeegee \u2014 Black' })
+await rows().nth(0).locator('input.num').first().fill('10')
+const atNewPrice = await page.locator('.total-row strong').textContent()
+console.log('  10 black squeegees at the edited price:', atNewPrice)
+if (!atNewPrice.replace(/\s|,/g, '').includes('300.00')) {
+  errors.push(`edited price not used when quoting: expected R300.00, got ${atNewPrice}`)
+}
+
+// The edited bulk tier should apply too: 60 x R26.00.
+await rows().nth(0).locator('input.num').first().fill('60')
+const atNewBulk = await page.locator('.total-row strong').textContent()
+console.log('  60 black squeegees at the edited bulk price:', atNewBulk)
+if (!atNewBulk.replace(/\s|,/g, '').includes('1560.00')) {
+  errors.push(`edited bulk price not used: expected R1560.00, got ${atNewBulk}`)
+}
+step('edited prices flow through to quoting')
+
 await browser.close()
 
 if (errors.length) {
