@@ -41,9 +41,23 @@ await page.getByRole('button', { name: 'Save client' }).click()
 await page.getByRole('link', { name: clientName }).waitFor({ timeout: 15000 })
 step('client edited')
 
-// --- build a quote: 30 black + 30 blue squeegees should hit the 50+ tier ---
+// --- add a client without leaving the document screen ---
 await page.getByRole('link', { name: 'Quotes & Invoices' }).click()
 await page.getByRole('link', { name: 'New document' }).click()
+const inlineName = 'Engen Tokai (e2e ' + Date.now() + ')'
+await page.getByRole('button', { name: '+ New' }).click()
+await field(page, 'Business name *').fill(inlineName)
+await field(page, 'Contact person').fill('Forecourt supervisor')
+await page.getByRole('button', { name: 'Save client' }).click()
+await page.locator('.inline-form').waitFor({ state: 'detached', timeout: 15000 })
+const picked = await field(page, 'Client').locator('option:checked').textContent()
+console.log('  client selected after inline add:', picked)
+if (picked !== inlineName) {
+  errors.push(`inline client not selected: expected ${inlineName}, got ${picked}`)
+}
+step('client added from the document screen')
+
+// --- build a quote: 30 black + 30 blue squeegees should hit the 50+ tier ---
 await field(page, 'Client').selectOption({ label: clientName })
 
 const rows = () => page.locator('table.lines tbody tr')
@@ -117,6 +131,11 @@ if (!logged.includes('120') || !logged.includes('Dani')) {
   errors.push('production entry did not appear in the log')
 }
 step('production logged')
+
+// --- the inline client is a real row, not just local state ---
+await page.goto(BASE + '/clients')
+await page.getByRole('link', { name: inlineName }).waitFor({ timeout: 15000 })
+step('inline client persisted to the clients list')
 
 // --- price list gap callout ---
 await page.goto(BASE + '/products')

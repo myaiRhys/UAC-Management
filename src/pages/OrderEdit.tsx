@@ -13,6 +13,7 @@ import { money, productLabel } from '../lib/format'
 import { orderTotal, priceLines, type DraftLine } from '../lib/pricing'
 import { nextOrderNumber } from '../lib/orderNumber'
 import { ErrorBox, Loading, PageHeader, StatusPill } from '../components/Bits'
+import NewClientForm from '../components/NewClientForm'
 
 const DOC_TYPES: { value: DocType; label: string; hint: string }[] = [
   { value: 'quote', label: 'Quote', hint: 'Pricing sent to a client' },
@@ -76,6 +77,8 @@ export default function OrderEdit() {
   const [status, setStatus] = useState<OrderStatus>('draft')
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([blankLine()])
+
+  const [addingClient, setAddingClient] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -306,17 +309,28 @@ export default function OrderEdit() {
         <div className="grid-2">
           <label className="field">
             <span>Client</span>
-            <select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-            >
-              <option value="">— select a client —</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <div className="row gap nowrap">
+              <select
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                disabled={addingClient}
+              >
+                <option value="">— select a client —</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn ghost small"
+                disabled={addingClient}
+                onClick={() => setAddingClient(true)}
+              >
+                + New
+              </button>
+            </div>
           </label>
 
           <label className="field">
@@ -333,6 +347,20 @@ export default function OrderEdit() {
             </select>
           </label>
         </div>
+
+        {addingClient && (
+          <NewClientForm
+            onCancel={() => setAddingClient(false)}
+            onCreated={(client) => {
+              // Slot the new client into the list in name order and pick it.
+              setClients((cs) =>
+                [...cs, client].sort((a, b) => a.name.localeCompare(b.name)),
+              )
+              setClientId(client.id)
+              setAddingClient(false)
+            }}
+          />
+        )}
 
         <div className="row gap middle">
           <span className="muted small">Status</span>
