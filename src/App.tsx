@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import Login from './auth/Login'
 import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import ClientEdit from './pages/ClientEdit'
 import Orders from './pages/Orders'
@@ -21,7 +22,7 @@ function Gate() {
       {/* Print view sits outside the chrome so it prints clean. */}
       <Route path="/orders/:id/print" element={<OrderPrint />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/orders" replace />} />
+        <Route path="/" element={<Dashboard />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/orders/new" element={<OrderEdit />} />
         <Route path="/orders/:id" element={<OrderEdit />} />
@@ -30,7 +31,7 @@ function Gate() {
         <Route path="/clients/:id" element={<ClientEdit />} />
         <Route path="/production" element={<Production />} />
         <Route path="/products" element={<Products />} />
-        <Route path="*" element={<Navigate to="/orders" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   )

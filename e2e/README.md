@@ -16,5 +16,8 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321 \
 BASE=http://localhost:5174 node e2e/smoke.mjs
 ```
 
+The test clears the mock's in-memory tables through `/__reset` before it starts,
+so the totals it asserts on cannot be thrown off by an earlier run.
+
 Playwright is deliberately not a package.json dependency: it would pull a
 browser download into every Vercel build for no benefit.

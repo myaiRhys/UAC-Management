@@ -14,13 +14,19 @@ const page = await browser.newPage()
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 page.on('pageerror', (e) => errors.push(String(e)))
 
+// Start from an empty database when running against the mock, so totals the
+// test asserts on cannot be polluted by an earlier run.
+await fetch(new URL('/__reset', process.env.VITE_SUPABASE_URL ?? 'http://127.0.0.1:54321'))
+  .catch(() => {})
+
 await page.goto(BASE)
 
 // --- login ---
 await field(page, 'Email').fill(EMAIL)
 await field(page, 'Password').fill(PASSWORD)
 await page.getByRole('button', { name: 'Sign in' }).click()
-await page.getByRole('heading', { name: 'Quotes & Invoices' }).waitFor({ timeout: 15000 })
+// Signing in lands on the dashboard.
+await page.getByRole('heading', { name: 'Dashboard' }).waitFor({ timeout: 15000 })
 step('logged in')
 
 // --- create a client ---
@@ -131,6 +137,55 @@ if (!logged.includes('120') || !logged.includes('Dani')) {
   errors.push('production entry did not appear in the log')
 }
 step('production logged')
+
+// --- an accepted quote becomes committed work on the dashboard ---
+await page.goto(BASE + '/orders/new')
+await field(page, 'Client').selectOption({ label: clientName })
+await rows().nth(0).locator('select').selectOption({ label: 'Squeegee \u2014 Black' })
+await rows().nth(0).locator('input.num').first().fill('40')
+await page.getByRole('button', { name: 'Mark accepted' }).click()
+await page.locator('.pill.status-accepted').waitFor({ timeout: 15000 })
+step('quote accepted')
+
+// --- dashboard ---
+await page.goto(BASE + '/')
+await page.getByRole('heading', { name: 'Dashboard' }).waitFor({ timeout: 15000 })
+
+const tile = async (label) =>
+  (await page.locator('.stat', { hasText: label }).locator('.stat-value').textContent()).trim()
+
+const accepted = await tile('Accepted, to invoice')
+const made = await tile('Made this month')
+console.log('  accepted tile:', accepted, '| made tile:', made)
+// 40 black squeegees at the list price of R28.00, below the 50+ bulk tier.
+if (!accepted.replace(/\s|,/g, '').includes('1120.00')) {
+  errors.push(`accepted tile wrong: expected R1120.00, got ${accepted}`)
+}
+if (made !== '120') errors.push(`made tile wrong: expected 120, got ${made}`)
+
+const owedPanel = page.locator('.panel', { hasText: 'Still owed to clients' })
+const owedText = await owedPanel.innerText()
+if (!owedText.includes('Squeegee \u2014 Black') || !owedText.includes('40')) {
+  errors.push(`owed panel missing 40 black squeegees: ${owedText.replace(/\n/g, ' | ')}`)
+}
+// The paid invoice is closed out, so its squeegees must not be counted.
+if (/Squeegee \u2014 Blue/.test(owedText)) {
+  errors.push('owed panel is counting a paid invoice')
+}
+
+const madePanel = page.locator('.panel', { hasText: 'Made this month' })
+const madeText = await madePanel.innerText()
+if (!madeText.includes('Squeegee \u2014 Red') || !madeText.includes('120')) {
+  errors.push(`made panel wrong: ${madeText.replace(/\n/g, ' | ')}`)
+}
+
+// The accepted quote is live; the paid invoice is not.
+const attention = await page.locator('table').first().innerText()
+if (!attention.includes('Accepted')) {
+  errors.push('accepted quote missing from Needs attention')
+}
+if (/Paid/.test(attention)) errors.push('paid invoice should not need attention')
+step('dashboard totals correct')
 
 // --- the inline client is a real row, not just local state ---
 await page.goto(BASE + '/clients')

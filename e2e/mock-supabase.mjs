@@ -50,7 +50,21 @@ function applyFilters(rows, params) {
     rows = rows.filter((r) => {
       const actual = r[key]
       if (op === 'eq') return String(actual) === value || actual === (value === 'true')
+      if (op === 'neq') return String(actual) !== value
       if (op === 'like') return typeof actual === 'string' && actual.startsWith(value.replace(/%$/, ''))
+      if (op === 'gte') return String(actual) >= value
+      if (op === 'lte') return String(actual) <= value
+      if (op === 'gt') return String(actual) > value
+      if (op === 'lt') return String(actual) < value
+      if (op === 'in') {
+        // in.(a,b,c) — PostgREST quotes members that need it.
+        const members = value
+          .replace(/^\(/, '')
+          .replace(/\)$/, '')
+          .split(',')
+          .map((m) => m.replace(/^"|"$/g, ''))
+        return members.includes(String(actual))
+      }
       return true
     })
   }
@@ -91,6 +105,15 @@ createServer((req, res) => {
   if (req.method === 'OPTIONS') return json(res, 204, null)
 
   const url = new URL(req.url, 'http://localhost')
+
+  // Lets a test start from a known-empty database without restarting the
+  // process — otherwise a leftover server silently carries data between runs.
+  if (url.pathname === '/__reset') {
+    for (const table of ['clients', 'orders', 'order_lines', 'production_log']) {
+      db[table] = []
+    }
+    return json(res, 200, { reset: true })
+  }
 
   if (url.pathname === '/auth/v1/token') {
     return json(res, 200, {

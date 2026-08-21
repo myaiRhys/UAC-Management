@@ -3,6 +3,7 @@ import { useAuth } from '../auth/context'
 import { COMPANY } from '../lib/company'
 
 const NAV = [
+  { to: '/', label: 'Dashboard' },
   { to: '/orders', label: 'Quotes & Invoices' },
   { to: '/clients', label: 'Clients' },
   { to: '/production', label: 'Production' },
@@ -25,6 +26,7 @@ export default function Layout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.to === '/'}
                 className={({ isActive }) =>
                   isActive ? 'nav-link active' : 'nav-link'
                 }
